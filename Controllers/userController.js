@@ -3,7 +3,41 @@ const User = require("../Models/user");
 const generateToken = require("../utils/generateToken");
 const uploadOptions = require("../Middleware/multerMiddleware");
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 
+const config = {
+    service: "gmail",
+    host: "smtp.gmail.com", // Correct the typo in 'smtp.gmail.com'
+    port: 587,
+    secure: false,
+    auth: {
+      user: "sohail.zaryab61@gmail.com",
+      pass: "afmr ofwg udnx apno"
+    }
+  }
+
+  
+const send = (data) => {
+    const transporter = nodemailer.createTransport(config);
+    transporter.sendMail(data, (err, info) => {
+      if (err) {
+        console.log(err);
+      } else {
+        return info.response;
+      }
+    });
+  };
+
+  exports.postEmail = async (req, res, next) => {
+    const { from, to, subject, text } = req.body;
+    const data = { from, to, subject, text };
+    
+    // Call the 'send' function defined above
+    send(data);
+  
+    res.send("Email sent"); // You can send a response here or handle it as needed.
+  };
+   
 //@desc Register user
 //route POST /api/users
 //@access Public
@@ -49,6 +83,14 @@ const signUp = asyncHandler(async (req, res) => {
         if (savedUser) {
           // Generate token and send response
           generateToken(res, savedUser._id);
+          // Send email notification
+        const emailData = {
+            from: config.auth.user,
+            to: savedUser.email,
+            subject: 'Welcome to Our Service!',
+            text: `Hi ${savedUser.name},\n\nThank you for signing up!\n\nBest regards,\nYour Company`
+          };
+          send(emailData);
           res.status(201).json({ message: "User SignUp Successfully", user: savedUser });
         } else {
           res.status(400).json({ message: "Invalid User Data" });
