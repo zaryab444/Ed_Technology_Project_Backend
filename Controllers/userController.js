@@ -2,7 +2,7 @@ const asyncHandler = require("express-async-handler");
 const User = require("../Models/user");
 const generateToken = require("../utils/generateToken");
 const uploadOptions = require("../Middleware/multerMiddleware");
-
+const jwt = require('jsonwebtoken');
 
 //@desc Register user
 //route POST /api/users
@@ -30,8 +30,6 @@ const signUp = asyncHandler(async (req, res) => {
         res.status(400).json({ message: "User already exists" });
         return;
       }
-
-      console.log(req.body);
   
       // Create a new user
       let user = new User({
@@ -61,9 +59,75 @@ const signUp = asyncHandler(async (req, res) => {
     });
   });
   
+//@desc Login user
+//route POST /api/users/login
+//@access Public
+//api http://localhost:5000/api/users/login
+
+const login = asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (user && (await user.matchPassword(password))) {
+      const token = jwt.sign(
+        {
+            userId: user.id,
+            //admin user can only use the token to process operation not user
+            role: user.role
+        },
+        process.env.
+        JWT_SECRET,
+        {expiresIn : '1d'}
+    ) 
+    res.status(200).send({user: user.email , token: token, role: user.role}) 
+    } else {
+      res.status(401);
+      throw new Error("Invalid email or password");
+    }
+    res.send("User Login Successfully");
+  });
+
+  
+//@desc Logout user / clear cookie
+//route POST /api/users/logout
+//@access Private
+//api http://localhost:5000/api/users/logout
+const logoutUser = asyncHandler(async (req, res) => {
+    res.cookie("jwt", "", {
+      httpOnly: true,
+      expires: new Date(0),
+    });
+    res.status(200).json({
+      message: "Logged out successfully",
+    });
+  });
+
+//@desc Get students lists in database we have 2 type data student and teacher they only show students data to teacher 
+//route GET /api/users/student profile
+//@access Private only teacher see
+//api http://localhost:5000/api/users/studentList
+
+const studentList = asyncHandler(async (req, res) => {
+    try {
+      // Query for users with role 'student'
+      const students = await User.find({ role: 'student' });
+  
+      // Check if any students were found
+      if (!students || students.length === 0) {
+        return res.status(404).json({ message: "No students found" });
+      }
+  
+      // Send the list of students as the response
+      res.status(200).json(students);
+    } catch (error) {
+      // Handle any errors
+      res.status(500).json({ message: error.message });
+    }
+  });
   
 
-
 module.exports = {
-    signUp
+    signUp,
+    login,
+    logoutUser,
+    studentList
 }
