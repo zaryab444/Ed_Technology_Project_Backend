@@ -1,31 +1,8 @@
 const asyncHandler = require("express-async-handler");
 const User = require("../Models/user");
 const generateToken = require("../utils/generateToken");
+const uploadOptions = require("../Middleware/multerMiddleware");
 
-const multer = require("multer");
-const FILE_TYPE_MAP = {
-  "image/png": "png",
-  "image/jpeg": "jpeg",
-  "image/jpg": "jpg",
-};
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const isValid = FILE_TYPE_MAP[file.mimetype];
-    let uploadError = new Error("Invalid image type");
-    if (isValid) {
-      uploadError = null;
-    }
-    cb(uploadError, "public/uploads");
-  },
-  filename: function (req, file, cb) {
-    const fileName = file.originalname.split(" ").join("-");
-    const extension = FILE_TYPE_MAP[file.mimetype];
-    cb(null, `${fileName}-${Date.now()}.${extension}`);
-  },
-});
-
-const uploadOptions = multer({ storage: storage }).single("image");
 
 //@desc Register user
 //route POST /api/users
@@ -33,11 +10,8 @@ const uploadOptions = multer({ storage: storage }).single("image");
 //api http://localhost:5000/api/users/signup
 const signUp = asyncHandler(async (req, res) => {
     uploadOptions(req, res, async (err) => {
-      if (err instanceof multer.MulterError) {
-        // A Multer error occurred during file upload
-        return res.status(400).send(err.message);
-      } else if (err) {
-        // An unknown error occurred during file upload
+      if (err) {
+        // Handle errors thrown by Multer
         return res.status(500).send(err.message);
       }
   
@@ -71,7 +45,6 @@ const signUp = asyncHandler(async (req, res) => {
       });
   
       try {
-
         // Save the user to the database
         const savedUser = await user.save();
   
